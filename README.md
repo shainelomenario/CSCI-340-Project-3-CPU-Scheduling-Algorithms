@@ -7,7 +7,7 @@ Notable process scheduling algorithms that was used.
 1. First Come First Serve (FCFS **Non-preemptive**)
 2. Shortest Remaining Time First (SRTF **Preemptive**)
 3. Priority Scheduling (Pri **Preemptive**)
-4. Round Robin (RR **Non-preemptive**)
+4. Round Robin (RR **Preemptive**)
 
 ## Instructions
 1. Clone the repo
