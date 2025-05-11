@@ -1,0 +1,199 @@
+#!/usr/bin/env python3
+import sys
+from collections import deque
+
+class Process:
+    def __init__(self, pid, arrival_time, burst_time, priority):
+        self.pid = pid
+        self.arrival_time = arrival_time
+        self.burst_time = burst_time
+        self.priority = priority
+
+        self.remaining_time = burst_time
+        self.finish_time = 0
+        self.turnaround_time = 0
+
+
+''' 
+    Idea is to store each process class in an array by first opening the file name. Then for each line
+    we are using the split() func to separate the commas and store the individual data of => 
+    pid, at, bt, priority respectively. These values are then converted as an int using the int constructor
+    and stored as local variables which are used as arguments for the processor constructor. Lastly, the 
+    processor class is appended to the processes array 
+'''
+def read_processes(filename):
+    processes = []
+    with open(filename, 'r') as file:
+        for line in file:
+            process_info = line.split(',')
+            pid = int(process_info[0])
+            at = int(process_info[1])
+            bt = int(process_info[2])
+            priority = int(process_info[3])
+            processes.append(Process(pid, at, bt, priority))
+    return processes
+
+def fcfs(processes):
+    current_time = 0
+
+    for process in processes:
+        if current_time < process.arrival_time:
+            current_time = process.arrival_time
+        current_time += process.burst_time
+        process.finish_time = current_time
+        process.turnaround_time = process.finish_time - process.arrival_time
+
+def srtf(processes):
+    current_time = 0
+    ready_queue = []
+    completed = 0
+    i = 0
+
+    while completed < len(processes):
+
+        while i < len(processes) and processes[i].arrival_time <= current_time:
+            ready_queue.append(processes[i])
+            i += 1
+
+        # If no processes arrived at current time, skip to the next processor's arrival time
+        if not ready_queue:
+            current_time = processes[i].arrival_time
+            continue
+
+        # Sort by remaining time, then by process ID
+        ready_queue.sort(key=lambda x: (x.remaining_time, x.pid))
+
+
+        # Execute the process with shortest remaining time
+        current_process = ready_queue[0]
+
+        # Check for preemption
+        next_arrival = float('inf')
+        if i < len(processes):
+            next_arrival = processes[i].arrival_time
+
+        time_slice = min(current_process.remaining_time, next_arrival - current_time)
+        current_time += time_slice
+        current_process.remaining_time -= time_slice
+
+
+        if current_process.remaining_time == 0:
+            current_process.finish_time = current_time
+            current_process.turnaround_time = current_process.finish_time - current_process.arrival_time
+            ready_queue.pop(0)
+            completed += 1
+
+
+def priority_scheduling(processes):
+    current_time = 0
+    ready_queue = []
+    completed = 0
+    i = 0
+    
+    while completed < len(processes):
+        # Add all processes that have arrived to ready queue
+        while i < len(processes) and processes[i].arrival_time <= current_time:
+            ready_queue.append(processes[i])
+            i += 1
+        
+        if not ready_queue:
+            current_time = processes[i].arrival_time
+            continue
+        
+        # Sort by priority (lower number = higher priority), then by process ID
+        ready_queue.sort(key=lambda x: (x.priority, x.pid))
+        
+        # Execute the highest priority process
+        current_process = ready_queue[0]
+        
+        # Check for preemption
+        next_arrival = float('inf')
+        if i < len(processes):
+            next_arrival = processes[i].arrival_time
+        
+        time_slice = min(current_process.remaining_time, next_arrival - current_time)
+        current_time += time_slice
+        current_process.remaining_time -= time_slice
+        
+        if current_process.remaining_time == 0:
+            current_process.finish_time = current_time
+            current_process.turnaround_time = current_process.finish_time - current_process.arrival_time
+            ready_queue.pop(0)
+            completed += 1
+
+
+def round_robin(processes, quantum):
+    current_time = 0
+    ready_queue = deque()
+    completed = 0
+    i = 0
+    
+    while completed < len(processes):
+        # Add newly arrived processes to ready queue
+        while i < len(processes) and processes[i].arrival_time <= current_time:
+            ready_queue.append(processes[i])
+            i += 1
+        
+        if not ready_queue:
+            current_time = processes[i].arrival_time
+            continue
+        
+        current_process = ready_queue.popleft()
+        
+        # Execute for quantum or until completion
+        time_slice = min(quantum, current_process.remaining_time)
+        current_time += time_slice
+        current_process.remaining_time -= time_slice
+        
+        # Add newly arrived processes before re-adding current process
+        while i < len(processes) and processes[i].arrival_time <= current_time:
+            ready_queue.append(processes[i])
+            i += 1
+        
+        if current_process.remaining_time == 0:
+            current_process.finish_time = current_time
+            current_process.turnaround_time = current_process.finish_time - current_process.arrival_time
+            completed += 1
+        else:
+            ready_queue.append(current_process)
+
+
+def print_results(processes):
+    processes.sort(key=lambda x: x.pid)
+    for process in processes:
+        print(f"{process.pid},{process.arrival_time},{process.finish_time},{process.turnaround_time}")
+
+
+
+def main():
+    if len(sys.argv) < 3:
+        print("Please enter all arguments! \nUsage: schedule <test file name> <scheduling algorithm> <time quantum if rr>")
+        sys.exit(1)
+    
+    filename = sys.argv[1]
+    algorithm = sys.argv[2]
+    
+    processes = read_processes(filename)
+    
+    if algorithm == "fcfs":
+        fcfs(processes)
+    elif algorithm == "srtf":
+        srtf(processes)
+    elif algorithm == "pri":
+        priority_scheduling(processes)
+    elif algorithm == "rr":
+        if len(sys.argv) < 4:
+            print("Time quantum required for round robin")
+            sys.exit(1)
+        quantum = int(sys.argv[3])
+        round_robin(processes, quantum)
+    else:
+        print("Invalid scheduling algorithm")
+        sys.exit(1)
+    
+    print_results(processes)
+
+if __name__ == "__main__":
+    main()
+
+
